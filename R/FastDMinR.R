@@ -54,6 +54,17 @@
 #' @import stringr
 #' @export
 
+get_os_binary <- function(binary_name) {
+  os = Sys.info()[['sysname']]
+  if(os == "Windows") {
+    paste0(binary_name,'.exe')
+  } else if(os=="Darwin") {
+    paste0(binary_name,'_mac')
+  } else {
+    binary_name
+  }
+}
+
 fast_dm <- function(data,
                     Subject,
                     Conditions,
@@ -90,8 +101,9 @@ fast_dm <- function(data,
   # checks
   if(!is.data.frame(data)){stop("data must be a data.frame!")}
   if(all(c(Subject,Conditions,TIME,RESPONSE) %in% names(data)) == FALSE  ){stop('Check column names!')}
-  if(!file.exists(paste0(fast_dm_path,"/fast-dm.exe"))){stop("Could not find fast-dm.exe!")}
-  if(!file.exists(paste0(fast_dm_path,"/plot-cdf.exe"))){stop("Could not find plot-cdf.exe!")}
+  if(!file.exists(paste0(fast_dm_path,"/",get_os_binary("fast-dm"))){stop("Could not find fast-dm executable!")}
+  if(!file.exists(paste0(fast_dm_path,"/",get_os_binary("plot-cdf"))){stop("Could not find plot-cdf executable!")}
+  if(!file.exists(paste0(fast_dm_path,"/",get_os_binary("construct-samples"))){stop("Could not find construct-samples executable!")}
   if(!(method %in% c("ml","ks","cs")))stop("Check method!")
   if(!setequal(c(names(fix_to), names(depend_on_condition), invariant), c("a","v","zr","d","t0","szr","sv","st0","p")))stop("All parameters (a, v, t0, d, zr, p, sv, st0 and szr) need to be specified as fixed, depending on a condition or invariant!")
 
@@ -197,8 +209,8 @@ fast_dm <- function(data,
                set_lines,
                depends_lines,
                format_line,
-               paste0("load \"",normalizePath(getwd()), "\\Diffusion\\*.csv\""),
-               paste0("log \"", normalizePath(getwd()),"\\Diffusion\\estimates.txt\"")), fileConn
+               paste0("load \"",normalizePath(getwd()), "/Diffusion/*.csv\""),
+               paste0("log \"", normalizePath(getwd()),"/Diffusion/estimates.txt\"")), fileConn
   )
   close(fileConn)
 
@@ -209,8 +221,8 @@ fast_dm <- function(data,
                set_lines,
                depends_lines,
                format_line,
-               paste0("load \"", normalizePath(getwd()), "\\Diffusion\\*.csv\""),
-               paste0("log \"", normalizePath(getwd()), "\\Diffusion\\estimates.txt\"")), fileConn
+               paste0("load \"", normalizePath(getwd()), "/Diffusion/*.csv\""),
+               paste0("log \"", normalizePath(getwd()), "/Diffusion/estimates.txt\"")), fileConn
   )
   close(fileConn)
 
@@ -218,7 +230,7 @@ fast_dm <- function(data,
   fileConn <- file(paste0(fast_dm_path,"/fast-dm.bat"))
   writeLines(c(paste0(sub("^([[:alpha:]]*).*", "\\1", fast_dm_path),":"),
                paste0("cd ", fast_dm_path),
-               "fast-dm.exe"), fileConn)
+               get_os_binary("fast-dm"), fileConn)
   close(fileConn)
 
   # launch fast-dm
@@ -227,7 +239,7 @@ fast_dm <- function(data,
 
 
   # read results
-  tmp <- read.table("Diffusion//estimates.txt", sep = "", header = TRUE)
+  tmp <- read.table("Diffusion/estimates.txt", sep = "", header = TRUE)
   aggr_estimates <- tmp[tmp$dataset == "all",]
   rownames(aggr_estimates) <- NULL
   tmp <- tmp[tmp$dataset != "all",]
@@ -248,7 +260,7 @@ fast_dm <- function(data,
 
     for (j in 1:nrow(Conditions_grid)) {
 
-      a <- capture.output(sys::exec_wait(cmd = paste0(fast_dm_path,"/plot-cdf.exe"),
+      a <- capture.output(sys::exec_wait(cmd = paste0(fast_dm_path,get_os_binary("/plot-cdf"),
                                          args = c(paste0("-a ", ifelse("a" %in% names(depend_on_condition),
                                                                        indiv_estimates[indiv_estimates$Subject == i, paste("a", paste(Conditions_grid[j, depend_on_condition$a], collapse = "_"), sep = "_")],
                                                                        ifelse("a" %in% names(fix_to), fix_to$a,
@@ -312,7 +324,7 @@ fast_dm <- function(data,
 
   for (j in 1:nrow(Conditions_grid)) {
 
-    a <- capture.output(sys::exec_wait(cmd = paste0(fast_dm_path,"/plot-cdf.exe"),
+    a <- capture.output(sys::exec_wait(cmd = paste0(fast_dm_path,get_os_binary("/plot-cdf"),
                                        args = c(paste0("-a ", ifelse("a" %in% names(depend_on_condition),
                                                                      aggr_estimates[, paste("a", paste(Conditions_grid[j, depend_on_condition$a], collapse = "_"), sep = "_")],
                                                                      ifelse("a" %in% names(fix_to), fix_to$a,
